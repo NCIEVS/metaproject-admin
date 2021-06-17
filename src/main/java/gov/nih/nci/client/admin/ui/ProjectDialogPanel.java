@@ -166,9 +166,9 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
                 name.setText(project.getName().get());
                 description.setText(project.getName().get());
                 com.google.common.base.Optional<ProjectOptions> options = project.getOptions();
-                if (options.isPresent()) {
+                if (options.isPresent()) {                    
+                    projectOptions.putAll(options.get().getOptions());
                     optionsTableModel.setOptions(options.get());
-                    projectOptions = options.get().getOptions();
                 }
             }
         }
