@@ -72,6 +72,7 @@ public class JsonSerializationView extends AbstractOWLViewComponent implements A
 				try {
 					LocalHttpClient.current_user().saveConfig();
 					setButtons(false);
+					manager.statusChanged(AdminTabEvent.CONFIGURATION_RESET);
 				}
 				catch (LoginTimeoutException e) {
 					JOptionPane.showMessageDialog(getOWLEditorKit().getOWLWorkspace(),
