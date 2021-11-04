@@ -156,7 +156,7 @@ public class ProjectOptionDialogPanel extends JPanel implements VerifiedInputEdi
         List<String> values = getValues();
         values.remove(oldValue);
         values.add(newValue);
-        Collections.sort(values);
+        //Collections.sort(values);
         this.values.setListData(values.toArray(new String[values.size()]));
         handleValueChange();
     }
@@ -166,7 +166,7 @@ public class ProjectOptionDialogPanel extends JPanel implements VerifiedInputEdi
         if(!value.isEmpty()) {
             List<String> values = getValues();
             values.add(value);
-            Collections.sort(values);
+            //Collections.sort(values);
             this.values.setListData(values.toArray(new String[values.size()]));
             handleValueChange();
         }
@@ -175,7 +175,7 @@ public class ProjectOptionDialogPanel extends JPanel implements VerifiedInputEdi
     private void removeValue() {
         List<String> values = getValues();
         this.values.getSelectedValuesList().forEach(values::remove);
-        Collections.sort(values);
+        //Collections.sort(values);
         this.values.setListData(values.toArray(new String[values.size()]));
         handleValueChange();
     }
