@@ -50,7 +50,7 @@ public class JsonSerializationPanel extends JPanel implements Disposable {
     private void initUi() {
         setLayout(new BorderLayout());
         textArea = new JTextArea((session.getActiveClient() != null ? getJsonString() : ""));
-        textArea.setEditable(false);
+        textArea.setEditable(session.getActiveClient().getConfig().canUpdateServerConfig());                
         textArea.setLineWrap(true);
         textArea.setBorder(GuiUtils.EMPTY_BORDER);
 
