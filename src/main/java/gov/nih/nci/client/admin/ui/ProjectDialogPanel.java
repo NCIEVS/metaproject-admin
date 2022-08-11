@@ -8,16 +8,21 @@ import gov.nih.nci.client.admin.model.ProjectOption;
 import org.protege.editor.core.ui.error.ErrorLogPanel;
 import org.protege.editor.core.ui.util.AugmentedJTextField;
 import org.protege.editor.core.ui.util.InputVerificationStatusChangedListener;
+import org.protege.editor.core.ui.util.JOptionPaneEx;
 import org.protege.editor.core.ui.util.UIUtil;
 import org.protege.editor.core.ui.util.VerifiedInputEditor;
 import org.protege.editor.owl.OWLEditorKit;
 import org.protege.editor.owl.client.ClientSession;
 import org.protege.editor.owl.client.LocalHttpClient;
 import org.protege.editor.owl.client.api.Client;
+import org.protege.editor.owl.client.api.OpenProjectResult;
 import org.protege.editor.owl.client.api.exception.AuthorizationException;
 import org.protege.editor.owl.client.api.exception.ClientRequestException;
 import org.protege.editor.owl.client.util.Config;
 import org.protege.editor.owl.client.util.GuiUtils;
+import org.protege.editor.owl.server.versioning.api.ChangeHistory;
+import org.protege.editor.owl.server.versioning.api.DocumentRevision;
+import org.protege.editor.owl.server.versioning.api.ServerDocument;
 import org.protege.editor.owl.ui.UIHelper;
 
 import javax.swing.*;
@@ -51,7 +56,8 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
     private AugmentedJTextField name;
     private AugmentedJTextArea description;
     private JTextField id;
-    private JLabel idLbl, nameLbl, descriptionLbl, fileLbl, fileSelectionLbl, ownerLbl;
+    private JLabel idLbl, nameLbl, descriptionLbl, fileLbl, reloadFileLbl, 
+    fileSelectionLbl, ownerLbl;
     private JComboBox<User> ownerComboBox;
     private JComboBox<Project> projectComboBox;
     private final JTextArea errorArea = new JTextArea(1, FIELD_WIDTH * 2);
@@ -59,7 +65,7 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
     private JButton fileBtn = new JButton("Browse");
     private JButton addOptionBtn, removeOptionBtn, editOptionBtn;
     private Map<String, Set<String>> projectOptions = new HashMap<>();
-    private File file;
+    private File file = null;
     private UserId ownerId;
     private boolean currentlyValid = false, isEditing = false;
     private ProjectOptionsTableModel optionsTableModel;
@@ -142,6 +148,7 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
         nameLbl = new JLabel("Name:");
         descriptionLbl = new JLabel("Description:");
         fileLbl = new JLabel("File:");
+        reloadFileLbl = new JLabel("Reload File:");
         ownerLbl = new JLabel("Owner:");
         fileSelectionLbl = new JLabel();
 
@@ -220,6 +227,10 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
         if (isEditing) {
             detailsPanel.add(ownerLbl, new GridBagConstraints(0, rowIndex, 1, 1, 0.0, 0.0, GridBagConstraints.BASELINE_TRAILING, GridBagConstraints.NONE, insets, 0, 0));
             detailsPanel.add(ownerComboBox, new GridBagConstraints(1, rowIndex, 2, 1, 1.0, 0.0, GridBagConstraints.BASELINE_LEADING, GridBagConstraints.HORIZONTAL, insets, 0, 0));
+            rowIndex++;
+            detailsPanel.add(reloadFileLbl, new GridBagConstraints(0, rowIndex, 1, 1, 0.0, 0.0, GridBagConstraints.BASELINE_TRAILING, GridBagConstraints.NONE, insets, 0, 0));
+            detailsPanel.add(fileBtn, new GridBagConstraints(1, rowIndex, 1, 1, 0.0, 0.0, GridBagConstraints.BASELINE_LEADING, GridBagConstraints.RELATIVE, new Insets(0, 0, 2, 0), 0, 0));
+            detailsPanel.add(fileSelectionLbl, new GridBagConstraints(2, rowIndex, 1, 1, 1.0, 0.0, GridBagConstraints.BASELINE_LEADING, GridBagConstraints.HORIZONTAL, new Insets(0, 0, 2, 0), 0, 0));
             rowIndex++;
         }
         if (!isEditing) {
@@ -449,6 +460,22 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
         Config config = ClientSession.getInstance(editorKit).getActiveClient().getConfig();
         try {
             config.updateProject(selectedProject.getId(), project);
+            if (this.file != null) {
+            	LocalHttpClient client = (LocalHttpClient) ClientSession.getInstance(editorKit).getActiveClient();
+            	
+            	OpenProjectResult openProjectResult = client.openProject(project.getId());
+                ServerDocument sdoc = openProjectResult.serverDocument;
+                ChangeHistory remoteChangeHistory = client.getLatestChanges(sdoc, DocumentRevision.START_REVISION, project.getId());
+            	
+                if (remoteChangeHistory.isEmpty()) {
+                	client.updateSnapshotForProject(project, file);
+                } else {
+                	JOptionPaneEx.showConfirmDialog(editorKit.getWorkspace(), "Can't Reload Warning", new JLabel("Recent changes made, new squash required"),
+                            JOptionPane.INFORMATION_MESSAGE, JOptionPane.DEFAULT_OPTION, null);
+                }
+            	
+            }
+            //this.initProjectComboBox();
         } catch (AuthorizationException | ClientRequestException e) {
             ErrorLogPanel.showErrorDialog(e);
         }
@@ -472,6 +499,7 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
             panel.update(project.get());
             return Optional.of(project.get());
         }
+        
         return Optional.empty();
     }
 
