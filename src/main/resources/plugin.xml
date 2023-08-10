@@ -63,7 +63,6 @@
 		<class value="gov.nih.nci.client.admin.ui.JsonSerializationView"/>
 		<headerColor value="@org.protege.ontologycolor"/>
 		<category value="Server Administration"/>
-		<instantiationType value="eager"/>
 	</extension>
 
 	<extension id="PolicyView"
