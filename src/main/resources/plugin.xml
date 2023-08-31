@@ -8,7 +8,11 @@
 	<extension id="AdminTab"
 			   point="org.protege.editor.core.application.WorkspaceTab">
 		<label value="Server Administration"/>
+		
+		<class value="gov.nih.nci.client.ServerAdminTab"/>
+		<!--
 		<class value="org.protege.editor.owl.ui.OWLWorkspaceViewsTab"/>
+		-->
 		<index value="Y"/>
 		<editorKitId value="OWLEditorKit"/>
 		<defaultViewConfigFileName value="viewconfig-admin.xml"/>
