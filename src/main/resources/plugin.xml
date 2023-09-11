@@ -15,6 +15,7 @@
 		-->
 		<index value="Y"/>
 		<editorKitId value="OWLEditorKit"/>
+		<instantiationType value="eager"/>
 		<defaultViewConfigFileName value="viewconfig-admin.xml"/>
 	</extension>
 
