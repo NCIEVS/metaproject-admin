@@ -2,6 +2,7 @@ package gov.nih.nci.client.admin.ui;
 
 import edu.stanford.protege.metaproject.ConfigurationManager;
 import edu.stanford.protege.metaproject.api.*;
+import edu.stanford.protege.metaproject.api.exception.ObjectConversionException;
 import gov.nih.nci.client.admin.exception.InvalidInputFileException;
 import gov.nih.nci.client.admin.model.ProjectOption;
 
@@ -20,10 +21,14 @@ import org.protege.editor.owl.client.api.exception.AuthorizationException;
 import org.protege.editor.owl.client.api.exception.ClientRequestException;
 import org.protege.editor.owl.client.util.Config;
 import org.protege.editor.owl.client.util.GuiUtils;
+import org.protege.editor.owl.server.http.HTTPServer;
+import org.protege.editor.owl.server.http.exception.ServerConfigurationInitializationException;
 import org.protege.editor.owl.server.versioning.api.ChangeHistory;
 import org.protege.editor.owl.server.versioning.api.DocumentRevision;
 import org.protege.editor.owl.server.versioning.api.ServerDocument;
 import org.protege.editor.owl.ui.UIHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -40,6 +45,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.*;
 import java.util.List;
 
@@ -51,21 +57,25 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
     private static final long serialVersionUID = 1141093187145768163L;
+    private static Logger logger = LoggerFactory.getLogger(ProjectDialogPanel.class);
     private OWLEditorKit editorKit;
     private static final int FIELD_WIDTH = 20;
     private AugmentedJTextField name;
     private AugmentedJTextArea description;
     private JTextField id;
     private JLabel idLbl, nameLbl, descriptionLbl, fileLbl, reloadFileLbl, 
-    fileSelectionLbl, ownerLbl;
+    fileSelectionLbl, ownerLbl, optionsLbl, optionsSelectionLbl;
     private JComboBox<User> ownerComboBox;
     private JComboBox<Project> projectComboBox;
+    private JComboBox<String> copyAddComboBox;
     private final JTextArea errorArea = new JTextArea(1, FIELD_WIDTH * 2);
     private List<InputVerificationStatusChangedListener> listeners = new ArrayList<>();
     private JButton fileBtn = new JButton("Browse");
+    private JButton optionsBtn = new JButton("Browse");
     private JButton addOptionBtn, removeOptionBtn, editOptionBtn;
     private Map<String, Set<String>> projectOptions = new HashMap<>();
     private File file = null;
+    private File optionsFile = null;
     private UserId ownerId;
     private boolean currentlyValid = false, isEditing = false;
     private ProjectOptionsTableModel optionsTableModel;
@@ -135,6 +145,8 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
         } else {
             initProjectComboBox();
             projectComboBox.addItemListener(projectComboBoxListener);
+            initCopyAddComboBox();
+            copyAddComboBox.addItemListener(copyAddComboBoxListener);
         }
 
         Insets insets = id.getBorder().getBorderInsets(id);
@@ -148,15 +160,21 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
         nameLbl = new JLabel("Name:");
         descriptionLbl = new JLabel("Description:");
         fileLbl = new JLabel("File:");
+        optionsLbl = new JLabel("Options:");
         reloadFileLbl = new JLabel("Reload File:");
         ownerLbl = new JLabel("Owner:");
         fileSelectionLbl = new JLabel();
+        optionsSelectionLbl = new JLabel();
 
         addListener(id.getDocument());
         addListener(name.getDocument());
         addListener(description.getDocument());
         fileBtn.addActionListener(new UploadActionListener());
+        optionsBtn.addActionListener(new UploadActionListener());
         ownerId = getOwnerId();
+        
+        optionsLbl.setVisible(false);
+        optionsBtn.setVisible(false);
     }
 
     private ItemListener ownerComboBoxListener = e -> {
@@ -180,6 +198,25 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
             }
         }
     };
+    
+    private ItemListener copyAddComboBoxListener = e -> {
+        if (e.getStateChange() == ItemEvent.SELECTED) {
+            String item = (String)copyAddComboBox.getSelectedItem();
+            if (item != null) {
+                if (item == "Copy") {                    
+                    projectComboBox.setVisible(true);
+                    optionsLbl.setVisible(false);
+                    optionsBtn.setVisible(false);
+                }
+                else {
+                	
+                	projectComboBox.setVisible(false);
+                	optionsLbl.setVisible(true);
+                	optionsBtn.setVisible(true);
+                }
+            }
+        }
+    };
 
     private class UploadActionListener implements ActionListener {
         @Override
@@ -189,6 +226,14 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
                 if (file != null) {
                     fileSelectionLbl.setText(file.getName());
                     handleValueChange();
+                }
+            }
+            if (e.getSource() == optionsBtn) {
+                optionsFile = UIUtil.openFile(ProjectDialogPanel.this.getRootPane(), "Choose file to upload", "JSON File", UIHelper.OWL_EXTENSIONS);
+                if (optionsFile != null) {
+                	optionsSelectionLbl.setText(optionsFile.getName());
+                    handleValueChange();
+                    loadOptions();
                 }
             }
         }
@@ -203,7 +248,8 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
         if (!isEditing) {
             JPanel topPanel = new JPanel(new GridBagLayout());
             Insets insets = new Insets(0, 2, 0, 2);
-            topPanel.add(new JLabel("Copy project:"), new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0, GridBagConstraints.BASELINE_LEADING, GridBagConstraints.NONE, insets, 0, 0));
+           // topPanel.add(new JLabel("Copy project:"), new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0, GridBagConstraints.BASELINE_LEADING, GridBagConstraints.NONE, insets, 0, 0));
+            topPanel.add(copyAddComboBox, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0, GridBagConstraints.BASELINE_LEADING, GridBagConstraints.NONE, insets, 0, 0));
             topPanel.add(projectComboBox, new GridBagConstraints(1, 0, 1, 1, 1.0, 0.0, GridBagConstraints.BASELINE_LEADING, GridBagConstraints.HORIZONTAL, insets, 0, 0));
             topPanel.add(new JSeparator(), new GridBagConstraints(0, 1, 2, 1, 1.0, 0.0, GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(5, 0, 10, 0), 0, 0));
             add(topPanel, BorderLayout.NORTH);
@@ -237,6 +283,11 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
             detailsPanel.add(fileLbl, new GridBagConstraints(0, rowIndex, 1, 1, 0.0, 0.0, GridBagConstraints.BASELINE_TRAILING, GridBagConstraints.NONE, insets, 0, 0));
             detailsPanel.add(fileBtn, new GridBagConstraints(1, rowIndex, 1, 1, 0.0, 0.0, GridBagConstraints.BASELINE_LEADING, GridBagConstraints.RELATIVE, new Insets(0, 0, 2, 0), 0, 0));
             detailsPanel.add(fileSelectionLbl, new GridBagConstraints(2, rowIndex, 1, 1, 1.0, 0.0, GridBagConstraints.BASELINE_LEADING, GridBagConstraints.HORIZONTAL, new Insets(0, 0, 2, 0), 0, 0));
+            rowIndex++;
+            
+            detailsPanel.add(optionsLbl, new GridBagConstraints(0, rowIndex, 1, 1, 0.0, 0.0, GridBagConstraints.BASELINE_TRAILING, GridBagConstraints.NONE, insets, 0, 0));
+            detailsPanel.add(optionsBtn, new GridBagConstraints(1, rowIndex, 1, 1, 0.0, 0.0, GridBagConstraints.BASELINE_LEADING, GridBagConstraints.RELATIVE, new Insets(0, 0, 2, 0), 0, 0));
+            detailsPanel.add(optionsSelectionLbl, new GridBagConstraints(2, rowIndex, 1, 1, 1.0, 0.0, GridBagConstraints.BASELINE_LEADING, GridBagConstraints.HORIZONTAL, new Insets(0, 0, 2, 0), 0, 0));
             rowIndex++;
         }
         errorArea.setBackground(null);
@@ -374,6 +425,12 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
         projectComboBox.setRenderer(new PolicyObjectComboBoxRenderer());
         projectComboBox.setSelectedIndex(0);
     }
+    
+    private void initCopyAddComboBox() {
+        String[] items = {"Copy","Add"};
+        copyAddComboBox = new JComboBox<>(items);
+        copyAddComboBox.setSelectedIndex(0);
+    }
 
     private void setIsEditing(Project project) {
         selectedProject = checkNotNull(project);
@@ -435,12 +492,26 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
         if (ownerId == null) {
             allValid = false;
         }
-        if (!isEditing && file == null) {
+        if (!isEditing && (file == null && optionsFile == null)) {
             allValid = false;
         }
         return allValid;
-    }
+    } 
 
+    private void loadOptions() {
+    	try {
+    		ProjectOptions options = ConfigurationManager.getProjectOptionsLoader().loadProjectOptions(optionsFile);
+    		com.google.common.base.Optional<ProjectOptions> opts = com.google.common.base.Optional.fromNullable(options);
+            if (opts.isPresent()) {                    
+                projectOptions.putAll(opts.get().getOptions());
+                optionsTableModel.setOptions(opts.get());
+            }
+    	} catch (FileNotFoundException | ObjectConversionException e) {
+			logger.error("Unable to load project options at location: " + optionsFile, e);
+			//throw new ServerConfigurationInitializationException("Unable to load server configuration", e);
+		}
+    }
+    
     private Project createProject() {
         PolicyFactory f = ConfigurationManager.getFactory();
         return f.getProject(f.getProjectId(id.getText()), "foo", f.getName(name.getText()), f.getDescription(description.getText()),
