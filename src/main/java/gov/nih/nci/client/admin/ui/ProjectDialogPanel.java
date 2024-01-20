@@ -191,7 +191,8 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
                 name.setText(project.getName().get());
                 description.setText(project.getName().get());
                 com.google.common.base.Optional<ProjectOptions> options = project.getOptions();
-                if (options.isPresent()) {                    
+                if (options.isPresent()) {
+                	clearProjectOptions();
                     projectOptions.putAll(options.get().getOptions());
                     optionsTableModel.setOptions(options.get());
                 }
@@ -207,13 +208,16 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
                     projectComboBox.setVisible(true);
                     optionsLbl.setVisible(false);
                     optionsBtn.setVisible(false);
+                    optionsSelectionLbl.setVisible(false);
                 }
                 else {
                 	
                 	projectComboBox.setVisible(false);
                 	optionsLbl.setVisible(true);
                 	optionsBtn.setVisible(true);
+                	optionsSelectionLbl.setVisible(true);
                 }
+                //clearProjectOptions();
             }
         }
     };
@@ -300,6 +304,11 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
         detailsPanel.add(errorArea, new GridBagConstraints(0, rowIndex, 3, 1, 1.0, 0.0, GridBagConstraints.SOUTHWEST, GridBagConstraints.NONE, new Insets(12, 2, 0, 2), 0, 0));
     }
 
+    private void clearProjectOptions() {
+    	projectOptions.clear();
+    	optionsTableModel = new ProjectOptionsTableModel();
+    }
+    
     private JPanel getProjectOptionsPanel() {
         JPanel optionsPanel = new JPanel(new BorderLayout());
         optionsTableModel = new ProjectOptionsTableModel();
@@ -502,7 +511,8 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
     	try {
     		ProjectOptions options = ConfigurationManager.getProjectOptionsLoader().loadProjectOptions(optionsFile);
     		com.google.common.base.Optional<ProjectOptions> opts = com.google.common.base.Optional.fromNullable(options);
-            if (opts.isPresent()) {                    
+            if (opts.isPresent()) {
+            	clearProjectOptions();
                 projectOptions.putAll(opts.get().getOptions());
                 optionsTableModel.setOptions(opts.get());
             }
