@@ -527,6 +527,12 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
         return f.getProject(f.getProjectId(id.getText()), "foo", f.getName(name.getText()), f.getDescription(description.getText()),
                 ownerId, com.google.common.base.Optional.fromNullable(f.getProjectOptions(projectOptions)));
     }
+    
+    private Project createProject(String nsp) {
+        PolicyFactory f = ConfigurationManager.getFactory();
+        return f.getProject(f.getProjectId(id.getText()), nsp, f.getName(name.getText()), f.getDescription(description.getText()),
+                ownerId, com.google.common.base.Optional.fromNullable(f.getProjectOptions(projectOptions)));
+    }
 
     private void addProject(Project project) {
         Client client = ClientSession.getInstance(editorKit).getActiveClient();
@@ -575,8 +581,10 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
     public static Optional<Project> showDialog(OWLEditorKit editorKit, Project selectedProject) {
         ProjectDialogPanel panel = new ProjectDialogPanel(editorKit, true);
         panel.setIsEditing(selectedProject);
-        Optional<Project> project = showDialog(editorKit, panel, "Edit Project '" + selectedProject.getName().get() + "'");
+        Optional<Project> project = showDialog(editorKit, panel, "Edit Project '" + 
+        		selectedProject.getName().get() + "'", selectedProject.namespace());
         if (project.isPresent()) {
+        	       	
             panel.update(project.get());
             return Optional.of(project.get());
         }
@@ -588,6 +596,15 @@ public class ProjectDialogPanel extends JPanel implements VerifiedInputEditor {
         int response = new UIHelper(editorKit).showValidatingDialog(header, panel, null);
         if (response == JOptionPane.OK_OPTION) {
             return Optional.of(panel.createProject());
+        }
+        return Optional.empty();
+    }
+    
+    private static Optional<Project> showDialog(OWLEditorKit editorKit, ProjectDialogPanel panel, 
+    			String header, String namespace) {
+        int response = new UIHelper(editorKit).showValidatingDialog(header, panel, null);
+        if (response == JOptionPane.OK_OPTION) {
+            return Optional.of(panel.createProject(namespace));
         }
         return Optional.empty();
     }
